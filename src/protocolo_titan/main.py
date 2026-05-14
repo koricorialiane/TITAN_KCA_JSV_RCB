@@ -10,12 +10,15 @@ from .plots import (
     save_fading_plot,
     save_reuse_plot,
     save_noise_plot,
+    save_cluster_map_plot,
+    save_carrier_distribution_plot,
+    save_spectrum_plot,
 )
-from .report import write_markdown_report
+from .report import write_markdown_report, write_calculation_annex, write_defense_brief
 
 
 def main() -> None:
-    project_root = Path.cwd()
+    project_root = Path(__file__).resolve().parents[2]
     outputs = project_root / "outputs"
     figures = outputs / "figures"
     outputs.mkdir(parents=True, exist_ok=True)
@@ -43,6 +46,14 @@ def main() -> None:
     save_coherence_plot(mobility, figures / "escenario_a_coherencia_vs_timeslot.png")
     save_reuse_plot(camp_results["frequency_planning"], figures / "escenario_b_reutilizacion.png")
     save_noise_plot(camp_results["rbw_noise"], figures / "certificacion_rbw_ruido.png")
+    save_cluster_map_plot(camp.cluster_size, camp.cell_radius_km, figures / "escenario_b_cluster_map.png")
+    save_carrier_distribution_plot(
+        camp_results["frequency_planning"],
+        camp_results["logical_channels"],
+        camp.total_carriers,
+        figures / "escenario_b_distribucion_portadoras.png",
+    )
+    save_spectrum_plot(camp_results["logical_channels"], figures / "escenario_b_spectrum.png")
 
     for name, trace in traces.items():
         trace.to_csv(outputs / f"traza_{name}.csv", index=False)
@@ -54,6 +65,22 @@ def main() -> None:
         fading_metrics=fading_summary,
         frequency_planning=camp_results["frequency_planning"],
         logical_channels=camp_results["logical_channels"],
+        rbw_noise=camp_results["rbw_noise"],
+        red_checklist=camp_results["red_checklist"],
+    )
+    write_calculation_annex(
+        outputs / "anexo_calculos.md",
+        mobility=mobility,
+        fading_metrics=fading_summary,
+        frequency_planning=camp_results["frequency_planning"],
+        logical_channels=camp_results["logical_channels"],
+        rbw_noise=camp_results["rbw_noise"],
+        red_checklist=camp_results["red_checklist"],
+    )
+    write_defense_brief(
+        outputs / "guion_defensa.md",
+        mobility=mobility,
+        frequency_planning=camp_results["frequency_planning"],
         rbw_noise=camp_results["rbw_noise"],
     )
 

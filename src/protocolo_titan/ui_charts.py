@@ -25,17 +25,21 @@ def figure_timeslot_signal(trace: pd.DataFrame):
     _dark_axes(fig, ax)
     x = trace['time_us'].to_numpy()
     y = trace['envelope_normalized'].to_numpy()
+    burst_duration_us = float(x.max())
+    burst_data_end = burst_duration_us * (300.0 / 577.0)
+    training_end = burst_duration_us * (540.0 / 577.0)
+    label_y = y.max() * 0.96
     ax.plot(x, y, color='#46C6FF', linewidth=1.8)
-    ax.axvspan(0, 300, color='#123A5E', alpha=0.25)
-    ax.axvspan(300, 540, color='#1B5D74', alpha=0.20)
-    ax.axvspan(540, 577, color='#2E4E6F', alpha=0.22)
-    ax.text(75, y.max()*0.96, 'BURST DATA', color='#AFC4E8', fontsize=8, fontweight='bold')
-    ax.text(360, y.max()*0.96, 'TRAINING SEQUENCE', color='#AFC4E8', fontsize=8, fontweight='bold')
-    ax.text(545, y.max()*0.96, 'GUARD', color='#AFC4E8', fontsize=8, fontweight='bold')
+    ax.axvspan(0, burst_data_end, color='#123A5E', alpha=0.25)
+    ax.axvspan(burst_data_end, training_end, color='#1B5D74', alpha=0.20)
+    ax.axvspan(training_end, burst_duration_us, color='#2E4E6F', alpha=0.22)
+    ax.text(burst_data_end * 0.25, label_y, 'BURST DATA', color='#AFC4E8', fontsize=8, fontweight='bold')
+    ax.text((burst_data_end + training_end) * 0.5, label_y, 'TRAINING SEQUENCE', color='#AFC4E8', fontsize=8, fontweight='bold')
+    ax.text((training_end + burst_duration_us) * 0.5, label_y, 'GUARD', color='#AFC4E8', fontsize=8, fontweight='bold')
     ax.set_title('ANÁLISIS TEMPORAL DE LA VARIACIÓN DE SEÑAL', loc='left', fontsize=13, fontweight='bold')
     ax.set_xlabel('TIME (µs)')
     ax.set_ylabel('AMP. NORM.')
-    ax.set_xlim(0, 577)
+    ax.set_xlim(0, burst_duration_us)
     ax.axhline(1.0, linestyle='--', color='#7ED7FF', alpha=0.5)
     return fig
 
@@ -51,44 +55,73 @@ def figure_noise(df: pd.DataFrame):
     return fig
 
 
-def figure_cluster_map():
+def figure_cluster_map(cluster_size: int = 4, cell_radius_km: float = 1.5):
     fig, ax = plt.subplots(figsize=(8, 7))
     _dark_axes(fig, ax)
-    ax.set_title('MAPEO DE CLÚSTER (N=4)', loc='left', fontsize=13, fontweight='bold')
+    ax.set_title(f'MAPEO DE CLÚSTER (N={cluster_size})', loc='left', fontsize=13, fontweight='bold')
 
-    # pattern of repeating 4-cell cluster across a hex layout
     cell_colors = {
         'A': '#35E1E8',
         'B': '#2B8CFF',
         'C': '#3F6ED8',
         'D': '#6BB7D8',
     }
-    labels = [
-        (-1, 1, 'A'), (0, 1, 'B'), (1, 1, 'D'),
-        (-1.5, 0, 'C'), (-0.5, 0, 'A'), (0.5, 0, 'B'), (1.5, 0, 'D'),
-        (-1, -1, 'C'), (0, -1, 'D'), (1, -1, 'B'),
-        (-0.5, 2, 'D'), (0.5, 2, 'C'),
-        (-0.5, -2, 'B'), (0.5, -2, 'A')
-    ]
 
-    r = 0.55
-    for x, y, lab in labels:
-        hexagon = RegularPolygon((x, y), numVertices=6, radius=r, orientation=np.radians(30),
-                                 facecolor=cell_colors[lab], edgecolor='#A6F7FF', alpha=0.85, linewidth=1.2)
-        ax.add_patch(hexagon)
-        ax.text(x, y, f'Cell {lab}', ha='center', va='center', color='#08213A', fontsize=9, fontweight='bold')
+    if cluster_size == 4:
+        labels = [
+            (-1, 1, 'A'), (0, 1, 'B'), (1, 1, 'D'),
+            (-1.5, 0, 'C'), (-0.5, 0, 'A'), (0.5, 0, 'B'), (1.5, 0, 'D'),
+            (-1, -1, 'C'), (0, -1, 'D'), (1, -1, 'B'),
+            (-0.5, 2, 'D'), (0.5, 2, 'C'),
+            (-0.5, -2, 'B'), (0.5, -2, 'A')
+        ]
 
-    ax.text(1.95, 1.95, 'Cell Radius\nR=1.5 km', color='#C7D5F2', fontsize=9)
-    ax.text(1.95, -1.9, 'Reuse pattern\nN=4', color='#C7D5F2', fontsize=9)
-    ax.set_xlim(-2.4, 2.8)
-    ax.set_ylim(-2.6, 2.6)
+        r = 0.55
+        for x, y, lab in labels:
+            hexagon = RegularPolygon((x, y), numVertices=6, radius=r, orientation=np.radians(30),
+                                     facecolor=cell_colors[lab], edgecolor='#A6F7FF', alpha=0.85, linewidth=1.2)
+            ax.add_patch(hexagon)
+            ax.text(x, y, f'Cell {lab}', ha='center', va='center', color='#08213A', fontsize=9, fontweight='bold')
+
+        ax.text(1.95, 1.95, f'Cell Radius\nR={cell_radius_km:g} km', color='#C7D5F2', fontsize=9)
+        ax.text(1.95, -1.9, f'Reuse pattern\nN={cluster_size}', color='#C7D5F2', fontsize=9)
+        ax.set_xlim(-2.4, 2.8)
+        ax.set_ylim(-2.6, 2.6)
+    else:
+        palette = ['#35E1E8', '#2B8CFF', '#3F6ED8', '#6BB7D8', '#7EE6FF', '#94D8FF']
+        radius = 0.42 if cluster_size > 12 else 0.5
+        orbit = 1.65 if cluster_size > 1 else 0.0
+        angles = np.linspace(0.0, 2.0 * np.pi, cluster_size, endpoint=False)
+
+        for idx, angle in enumerate(angles):
+            x = orbit * math.cos(angle)
+            y = orbit * math.sin(angle)
+            label = chr(ord('A') + idx)
+            hexagon = RegularPolygon(
+                (x, y),
+                numVertices=6,
+                radius=radius,
+                orientation=np.radians(30),
+                facecolor=palette[idx % len(palette)],
+                edgecolor='#A6F7FF',
+                alpha=0.85,
+                linewidth=1.2,
+            )
+            ax.add_patch(hexagon)
+            ax.text(x, y, f'Cell {label}', ha='center', va='center', color='#08213A', fontsize=8, fontweight='bold')
+
+        ax.text(2.2, 1.95, f'Cell Radius\nR={cell_radius_km:g} km', color='#C7D5F2', fontsize=9)
+        ax.text(2.2, -1.9, f'Reuse pattern\nN={cluster_size}', color='#C7D5F2', fontsize=9)
+        ax.set_xlim(-2.6, 3.0)
+        ax.set_ylim(-2.5, 2.5)
+
     ax.set_aspect('equal')
     ax.set_xticks([])
     ax.set_yticks([])
     return fig
 
 
-def figure_carrier_distribution(plan_df: pd.DataFrame, logical_df: pd.DataFrame):
+def figure_carrier_distribution(plan_df: pd.DataFrame, logical_df: pd.DataFrame, total_carriers: int | None = None):
     bcch = logical_df[logical_df['carrier_role'].str.contains('BCCH')].groupby('cell').size()
     tch = logical_df[logical_df['carrier_role'].str.contains('TCH')].groupby('cell').size()
     cells = plan_df['cell'].tolist()
@@ -99,7 +132,8 @@ def figure_carrier_distribution(plan_df: pd.DataFrame, logical_df: pd.DataFrame)
     _dark_axes(fig, ax)
     ax.bar(cells, bcch_vals, label='BCCH', color='#7EE6FF')
     ax.bar(cells, tch_vals, bottom=bcch_vals, label='TCH', color='#278DFF')
-    ax.set_title('DISTRIBUCIÓN DE PORTADORAS (24 CH)', loc='left', fontsize=12, fontweight='bold')
+    carriers = total_carriers if total_carriers is not None else int(logical_df['arfcn'].nunique())
+    ax.set_title(f'DISTRIBUCIÓN DE PORTADORAS ({carriers} CH)', loc='left', fontsize=12, fontweight='bold')
     ax.set_xlabel('Cell ID')
     ax.set_ylabel('Número de canales')
     ax.legend(facecolor='#0E1B2E', edgecolor='#2D4060', labelcolor='#DDE9FF')
@@ -110,9 +144,8 @@ def figure_spectrum_from_arfcns(logical_df: pd.DataFrame):
     fig, ax = plt.subplots(figsize=(7.0, 3.6))
     _dark_axes(fig, ax)
 
-    # approximate GSM-900 uplink/downlink style visualization for didactic spectrum look
     arfcns = logical_df['arfcn'].to_numpy()
-    freqs = 890.0 + arfcns * 0.2  # stylized, not standard-precise mapping for visualization only
+    freqs = 890.0 + arfcns * 0.2
     x = np.linspace(freqs.min()-2, freqs.max()+2, 1400)
     y = -105 + 1.5*np.sin(0.4*x)
     for i, f in enumerate(freqs):
@@ -123,7 +156,7 @@ def figure_spectrum_from_arfcns(logical_df: pd.DataFrame):
     ax.set_ylim(-110, -20)
     ax.set_xlabel('Frequency (MHz)')
     ax.set_ylabel('Power / Amplitude (dBm)')
-    ax.set_title('ESPECTRO GSM — DISTRIBUCIÓN Y CO-CANAL', loc='left', fontsize=12, fontweight='bold')
+    ax.set_title('ESPECTRO GSM-900 UPLINK — DISTRIBUCIÓN Y CO-CANAL', loc='left', fontsize=12, fontweight='bold')
     return fig
 
 

@@ -33,6 +33,13 @@ def assign_arfcns(
     Para docencia se usa una asignación consecutiva. En ingeniería real se
     contrastaría con drive tests, coordinación espectral y medidas de campo.
     """
+    if scenario.cluster_size > 26:
+        raise ValueError("cluster_size debe ser <= 26 para etiquetar celdas de A a Z.")
+    if scenario.first_arfcn <= 0:
+        raise ValueError("first_arfcn debe ser positivo.")
+    if scenario.first_arfcn + scenario.total_carriers - 1 > 124:
+        raise ValueError("El rango ARFCN debe permanecer dentro de GSM-900 (1-124).")
+
     n = carriers_per_cell(scenario.total_carriers, scenario.cluster_size)
     assignments: Dict[str, List[int]] = {}
 

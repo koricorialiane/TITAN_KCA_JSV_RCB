@@ -23,6 +23,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Para una instalación reproducible con versiones fijadas:
+
+```bash
+pip install -r requirements-lock.txt
+```
+
 ---
 
 ## 2. Ejecución completa
@@ -30,6 +36,13 @@ pip install -r requirements.txt
 ```bash
 python -m protocolo_titan.main
 ```
+
+La ejecución completa genera:
+
+- `outputs/informe_resultados.md`: informe técnico largo con estructura IMRyD ampliada y discusión alineada con la rúbrica.
+- `outputs/anexo_calculos.md`: anexo de cálculos paso a paso y trazabilidad.
+- `outputs/guion_defensa.md`: guion breve para una defensa oral.
+- tablas CSV y figuras PNG listas para integrarse en el entregable final.
 
 Si ejecutas desde la raíz del repositorio y Python no encuentra el paquete:
 
@@ -58,11 +71,6 @@ La interfaz Streamlit ha sido rediseñada para ofrecer una visualización tipo *
 - **Escenario A · Physics & Spectrum**: tarjetas de capa física, Doppler/coherencia, señal temporal y telemetría GSM.
 - **Escenario B · Base Camp**: mapa de clúster N=4, distribución BCCH/TCH, panel de planificación celular, espectro y checklist RED.
 
-La interfaz Streamlit ha sido rediseñada para ofrecer una visualización tipo **mission control dashboard**, inspirada en un panel de analítica ferroviaria y RF: 
-
-- **Escenario A · Physics & Spectrum**: tarjetas de capa física, Doppler/coherencia, señal temporal y telemetría GSM.
-- **Escenario B · Base Camp**: mapa de clúster N=4, distribución BCCH/TCH, panel de planificación celular, espectro y checklist RED.
-
 ---
 
 ## 4. Notebook docente
@@ -79,6 +87,7 @@ jupyter notebook notebooks/protocolo_titan_replanteado.ipynb
 protocolo_titan_replanteado/
 ├── README.md
 ├── requirements.txt
+├── requirements-lock.txt
 ├── pyproject.toml
 ├── docs/
 │   └── guia_uso_docente.md
@@ -90,6 +99,8 @@ protocolo_titan_replanteado/
 │   ├── escenario_b_planificacion.csv
 │   ├── escenario_b_canales_logicos.csv
 │   ├── certificacion_rbw.csv
+│   ├── anexo_calculos.md
+│   ├── guion_defensa.md
 │   └── figures/
 ├── src/
 │   └── protocolo_titan/
@@ -166,9 +177,10 @@ N(dBm) = -174 dBm/Hz + 10 log10(RBW) + NF
 ## 8. Uso docente sugerido
 
 1. Ejecutar `main.py`.
-2. Revisar las tablas CSV generadas.
-3. Abrir el notebook para interpretar resultados.
-4. Modificar parámetros:
+2. Revisar `outputs/informe_resultados.md` como base de la memoria técnica.
+3. Usar `outputs/anexo_calculos.md` para justificar fórmulas, unidades e hipótesis.
+4. Abrir el notebook para interpretar resultados y ampliar figuras si hace falta.
+5. Modificar parámetros:
    - frecuencia central;
    - velocidades;
    - radio de celda;
@@ -176,4 +188,14 @@ N(dBm) = -174 dBm/Hz + 10 log10(RBW) + NF
    - tamaño del clúster;
    - RBW;
    - figura de ruido.
-5. Incorporar gráficas y tablas al informe IMRyD ampliado.
+6. Incorporar gráficas y tablas al informe final en PDF.
+
+---
+
+## 9. Cobertura de la rúbrica
+
+- **Formato y estructura**: `outputs/informe_resultados.md` ya sigue una estructura IMRyD ampliada con introducción, estado del arte, metodología, escenarios, resultados, discusión y referencias.
+- **Rigor teórico**: el informe incluye FDMA/TDMA, canales físicos/lógicos, fading, Doppler, reutilización y RED.
+- **Precisión matemática**: `outputs/anexo_calculos.md` deja trazables las conversiones, fórmulas y unidades.
+- **Análisis de resultados**: la discusión integra movilidad, interferencia y medida instrumental en una única propuesta de red.
+- **Creatividad y conclusiones**: `outputs/guion_defensa.md` resume el relato técnico para presentación o defensa.

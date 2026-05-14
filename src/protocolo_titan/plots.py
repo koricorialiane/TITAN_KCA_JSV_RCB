@@ -2,6 +2,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from .ui_charts import figure_carrier_distribution, figure_cluster_map, figure_spectrum_from_arfcns
+
 
 def save_doppler_plot(df: pd.DataFrame, path: Path) -> None:
     fig, ax = plt.subplots(figsize=(7, 4))
@@ -34,9 +36,10 @@ def save_fading_plot(df: pd.DataFrame, path: Path) -> None:
     ax.plot(df["time_us"], df["envelope_normalized"])
     model = df["model"].iloc[0]
     doppler = df["doppler_hz"].iloc[0]
+    duration_us = float(df["time_us"].iloc[-1])
     ax.set_xlabel("Tiempo dentro del timeslot (µs)")
     ax.set_ylabel("Envolvente normalizada")
-    ax.set_title(f"Fading {model} durante 577 µs — fD={doppler:.2f} Hz")
+    ax.set_title(f"Fading {model} durante {duration_us:.0f} µs — fD={doppler:.2f} Hz")
     ax.grid(True)
     fig.tight_layout()
     fig.savefig(path, dpi=200)
@@ -65,6 +68,32 @@ def save_noise_plot(df: pd.DataFrame, path: Path) -> None:
     ax.set_ylabel("Suelo de ruido (dBm)")
     ax.set_title("Instrumentación: ruido integrado frente a RBW")
     ax.grid(True)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+
+
+def save_cluster_map_plot(cluster_size: int, cell_radius_km: float, path: Path) -> None:
+    fig = figure_cluster_map(cluster_size=cluster_size, cell_radius_km=cell_radius_km)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+
+
+def save_carrier_distribution_plot(
+    plan_df: pd.DataFrame,
+    logical_df: pd.DataFrame,
+    total_carriers: int,
+    path: Path,
+) -> None:
+    fig = figure_carrier_distribution(plan_df, logical_df, total_carriers=total_carriers)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+
+
+def save_spectrum_plot(logical_df: pd.DataFrame, path: Path) -> None:
+    fig = figure_spectrum_from_arfcns(logical_df)
     fig.tight_layout()
     fig.savefig(path, dpi=200)
     plt.close(fig)

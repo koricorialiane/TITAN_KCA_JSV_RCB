@@ -45,3 +45,41 @@ Debe explicar que reducir RBW no aumenta la potencia real de la señal: reduce e
 - Tabla de ARFCNs y canales lógicos.
 - Tabla y gráfica de suelo de ruido.
 - Discusión integrada de resultados.
+
+## Artefactos que ya genera el proyecto
+
+- `outputs/informe_resultados.md`: borrador largo del artículo técnico con introducción, estado del arte, metodología, resultados, discusión y referencias.
+- `outputs/anexo_calculos.md`: anexo de cálculo paso a paso para justificar unidades, hipótesis y fórmulas.
+- `outputs/guion_defensa.md`: esquema breve para presentación oral o defensa.
+- `outputs/figures/*.png`: figuras listas para insertar en el PDF final.
+
+## Cómo usar el repositorio con la rúbrica
+
+### Formato y estructura
+
+- Utiliza `outputs/informe_resultados.md` como columna vertebral del trabajo.
+- Convierte el Markdown a PDF desde el editor que use el grupo o el docente.
+- Mantén portada, índice y anexos como capas externas al informe generado.
+
+### Rigor teórico
+
+- Conserva los apartados de FDMA/TDMA, canales lógicos, fading y RED.
+- Añade citas bibliográficas formales si el docente exige un estilo IEEE o APA más estricto.
+
+### Precisión matemática
+
+- Usa `outputs/anexo_calculos.md` para revisar conversiones y resultados antes de cerrar la versión final.
+- No cambies unidades a mitad del desarrollo sin dejar la equivalencia escrita.
+
+### Análisis y conclusiones
+
+- Cierra cada sección del informe con una mini conclusión parcial.
+- En la discusión final conecta siempre movilidad, reutilización y medida instrumental.
+
+## Recomendación de flujo de trabajo
+
+1. Ejecutar `python -m protocolo_titan.main`.
+2. Revisar `outputs/informe_resultados.md` y `outputs/anexo_calculos.md`.
+3. Ajustar texto, referencias y estilo visual según la asignatura.
+4. Exportar el documento final a PDF.
+5. Ensayar la exposición con `outputs/guion_defensa.md`.

@@ -11,6 +11,11 @@ from .propagation import (
 )
 
 
+def trace_key(model: str, speed_kmh: float) -> str:
+    speed_token = format(float(speed_kmh), "g").replace("-", "m").replace(".", "_")
+    return f"{model.lower()}_{speed_token}_kmh"
+
+
 def analyze_convoy_mobility(
     scenario: ConvoyScenario = ConvoyScenario(),
     config: GSMConfig = GSMConfig(),
@@ -61,7 +66,7 @@ def analyze_convoy_fading(
                 model=model,
                 seed=int(row["speed_kmh"]) + (0 if model == "rayleigh" else 1000),
             )
-            key = f"{model}_{int(row['speed_kmh'])}_kmh"
+            key = trace_key(model, float(row["speed_kmh"]))
             traces[key] = trace
 
             m = fading_metrics(trace)

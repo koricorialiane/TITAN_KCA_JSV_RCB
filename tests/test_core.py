@@ -1,6 +1,8 @@
 import math
 from pathlib import Path
+import zipfile
 
+from docx import Document
 import pandas as pd
 import pytest
 
@@ -8,7 +10,7 @@ from protocolo_titan.config import CampScenario
 from protocolo_titan.propagation import kmh_to_ms, max_doppler_hz, coherence_time_s
 from protocolo_titan.cellular_planning import assign_arfcns, carriers_per_cell, reuse_distance_km, reuse_ratio
 from protocolo_titan.instrumentation import analyzer_noise_floor_dbm
-from protocolo_titan.report import write_calculation_annex, write_defense_brief, write_markdown_report
+from protocolo_titan.report import write_calculation_annex, write_defense_brief, write_docx_document, write_html_document, write_markdown_report, write_pdf_document
 from protocolo_titan.scenario_a import analyze_convoy_fading, trace_key
 
 
@@ -134,6 +136,15 @@ def test_report_writes_markdown_without_tabulate(tmp_path: Path):
     content = output_path.read_text(encoding="utf-8")
     annex_content = annex_path.read_text(encoding="utf-8")
     defense_content = defense_path.read_text(encoding="utf-8")
+    write_html_document(tmp_path / "report.html", "Informe", content)
+    write_pdf_document(tmp_path / "report.pdf", "Informe", content, tmp_path)
+    write_docx_document(tmp_path / "report.docx", "Informe", content, tmp_path)
+    html_content = (tmp_path / "report.html").read_text(encoding="utf-8")
+    pdf_bytes = (tmp_path / "report.pdf").read_bytes()
+    docx_document = Document(tmp_path / "report.docx")
+    docx_text = "\n".join(paragraph.text for paragraph in docx_document.paragraphs)
+    with zipfile.ZipFile(tmp_path / "report.docx") as docx_file:
+        docx_entries = set(docx_file.namelist())
     assert "# Protocolo Titán — Informe técnico docente" in content
     assert "## 1. Introducción" in content
     assert "## 2. Estado del arte" in content
@@ -142,6 +153,11 @@ def test_report_writes_markdown_without_tabulate(tmp_path: Path):
     assert "577" in content
     assert "Anexo de cálculos y trazabilidad" in annex_content
     assert "Guion breve de defensa" in defense_content
+    assert "<html lang=\"es\">" in html_content
+    assert pdf_bytes.startswith(b"%PDF")
+    assert "[Content_Types].xml" in docx_entries
+    assert "PLANTILLA DE ENTREGA ACADÉMICA" in docx_text
+    assert "Datos de entrega y revisión final" in docx_text
 
 
 def test_invalid_cluster_size_raises():

@@ -14,7 +14,14 @@ from .plots import (
     save_carrier_distribution_plot,
     save_spectrum_plot,
 )
-from .report import write_markdown_report, write_calculation_annex, write_defense_brief
+from .report import (
+    build_calculation_annex_markdown,
+    build_defense_brief_markdown,
+    build_report_markdown,
+    write_docx_document,
+    write_html_document,
+    write_pdf_document,
+)
 
 
 def main() -> None:
@@ -59,8 +66,7 @@ def main() -> None:
         trace.to_csv(outputs / f"traza_{name}.csv", index=False)
         save_fading_plot(trace, figures / f"traza_{name}.png")
 
-    write_markdown_report(
-        outputs / "informe_resultados.md",
+    report_markdown = build_report_markdown(
         mobility=mobility,
         fading_metrics=fading_summary,
         frequency_planning=camp_results["frequency_planning"],
@@ -68,8 +74,7 @@ def main() -> None:
         rbw_noise=camp_results["rbw_noise"],
         red_checklist=camp_results["red_checklist"],
     )
-    write_calculation_annex(
-        outputs / "anexo_calculos.md",
+    annex_markdown = build_calculation_annex_markdown(
         mobility=mobility,
         fading_metrics=fading_summary,
         frequency_planning=camp_results["frequency_planning"],
@@ -77,12 +82,27 @@ def main() -> None:
         rbw_noise=camp_results["rbw_noise"],
         red_checklist=camp_results["red_checklist"],
     )
-    write_defense_brief(
-        outputs / "guion_defensa.md",
+    defense_markdown = build_defense_brief_markdown(
         mobility=mobility,
         frequency_planning=camp_results["frequency_planning"],
         rbw_noise=camp_results["rbw_noise"],
     )
+
+    (outputs / "informe_resultados.md").write_text(report_markdown, encoding="utf-8")
+    (outputs / "anexo_calculos.md").write_text(annex_markdown, encoding="utf-8")
+    (outputs / "guion_defensa.md").write_text(defense_markdown, encoding="utf-8")
+
+    write_html_document(outputs / "informe_resultados.html", "Protocolo Titán — Informe técnico docente", report_markdown)
+    write_html_document(outputs / "anexo_calculos.html", "Protocolo Titán — Anexo de cálculos", annex_markdown)
+    write_html_document(outputs / "guion_defensa.html", "Protocolo Titán — Guion de defensa", defense_markdown)
+
+    write_pdf_document(outputs / "informe_resultados.pdf", "Protocolo Titán — Informe técnico docente", report_markdown, outputs)
+    write_pdf_document(outputs / "anexo_calculos.pdf", "Protocolo Titán — Anexo de cálculos", annex_markdown, outputs)
+    write_pdf_document(outputs / "guion_defensa.pdf", "Protocolo Titán — Guion de defensa", defense_markdown, outputs)
+
+    write_docx_document(outputs / "informe_resultados.docx", "Protocolo Titán — Informe técnico docente", report_markdown, outputs)
+    write_docx_document(outputs / "anexo_calculos.docx", "Protocolo Titán — Anexo de cálculos", annex_markdown, outputs)
+    write_docx_document(outputs / "guion_defensa.docx", "Protocolo Titán — Guion de defensa", defense_markdown, outputs)
 
     print("\n=== Resumen FDMA/TDMA ===")
     print(access.to_string(index=False))

@@ -49,8 +49,14 @@ Debe explicar que reducir RBW no aumenta la potencia real de la señal: reduce e
 ## Artefactos que ya genera el proyecto
 
 - `outputs/informe_resultados.md`: borrador largo del artículo técnico con introducción, estado del arte, metodología, resultados, discusión y referencias.
+- `outputs/informe_resultados.html` y `outputs/informe_resultados.pdf`: exportaciones listas para revisión, impresión o entrega.
+- `outputs/informe_resultados.docx`: versión editable para pulido visual final.
 - `outputs/anexo_calculos.md`: anexo de cálculo paso a paso para justificar unidades, hipótesis y fórmulas.
+- `outputs/anexo_calculos.html` y `outputs/anexo_calculos.pdf`: versiones compartibles del anexo.
+- `outputs/anexo_calculos.docx`: versión editable para revisión o corrección.
 - `outputs/guion_defensa.md`: esquema breve para presentación oral o defensa.
+- `outputs/guion_defensa.html` y `outputs/guion_defensa.pdf`: apoyo directo para una defensa o tutoría.
+- `outputs/guion_defensa.docx`: formato editable para adaptar la exposición.
 - `outputs/figures/*.png`: figuras listas para insertar en el PDF final.
 
 ## Cómo usar el repositorio con la rúbrica
@@ -81,5 +87,6 @@ Debe explicar que reducir RBW no aumenta la potencia real de la señal: reduce e
 1. Ejecutar `python -m protocolo_titan.main`.
 2. Revisar `outputs/informe_resultados.md` y `outputs/anexo_calculos.md`.
 3. Ajustar texto, referencias y estilo visual según la asignatura.
+La portada del DOCX ya incluye campos editables para centro, asignatura, autoría y fecha.
 4. Exportar el documento final a PDF.
 5. Ensayar la exposición con `outputs/guion_defensa.md`.

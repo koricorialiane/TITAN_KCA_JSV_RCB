@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Protocolo Titán — Informe técnico docente</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #1f2937;
+      line-height: 1.55;
+    }
+    main {
+      max-width: 1080px;
+      margin: 32px auto;
+      background: #ffffff;
+      padding: 36px 42px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      border-radius: 14px;
+    }
+    h1, h2, h3, h4 { color: #0f172a; margin-top: 1.35em; }
+    h1 { font-size: 2rem; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.35rem; }
+    h2 { font-size: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem; }
+    h3 { font-size: 1.2rem; }
+    h4 { font-size: 1.05rem; }
+    p, li { font-size: 0.98rem; }
+    code { background: #eef2ff; padding: 0.1rem 0.3rem; border-radius: 4px; font-family: Consolas, monospace; }
+    pre { background: #0f172a; color: #f8fafc; padding: 1rem; overflow-x: auto; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.4rem 0; font-size: 0.92rem; }
+    th, td { border: 1px solid #cbd5e1; padding: 0.55rem 0.6rem; text-align: left; vertical-align: top; }
+    th { background: #e2e8f0; }
+    img { max-width: 100%; height: auto; display: block; margin: 1rem auto; border: 1px solid #cbd5e1; border-radius: 8px; }
+    blockquote { margin: 1rem 0; padding-left: 1rem; border-left: 4px solid #94a3b8; color: #475569; }
+    @media print {
+      body { background: #ffffff; }
+      main { box-shadow: none; margin: 0; max-width: none; padding: 0; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+<h1>Protocolo Titán — Informe técnico docente</h1>
+<h2>Resumen</h2>
+<p>Este informe evalúa la viabilidad de una red GSM/EDGE táctica en dos contextos de misión crítica: movilidad extrema en un convoy ferroviario y alta densidad operativa en un campamento base. Se parte de una red GSM-900 con portadoras de 200 kHz, un timeslot de 577 µs, velocidades de estudio 50 km/h, 250 km/h y un plan celular con 24 ARFCNs distribuidos en un clúster N=4.
+Los resultados muestran que el escenario A está dominado por la variación temporal del canal, mientras que el escenario B queda condicionado por la reutilización espectral, la protección co-canal y el criterio instrumental de medida.</p>
+<h2>1. Introducción</h2>
+<p>El reto Protocolo Titán plantea el diseño de una red táctica de alta fiabilidad basada en GSM/EDGE. Aunque se trata de una arquitectura histórica, sigue siendo útil como referencia docente porque combina robustez, interoperabilidad, sencillez de despliegue y una estructura radio bien documentada [1], [2].
+Desde la perspectiva de misión crítica, la red debe soportar coordinación de voz, control de equipos, telemetría de baja tasa y decisiones de ingeniería que preserven tanto la disponibilidad del enlace como el uso disciplinado del espectro.</p>
+<h3>1.1 Objetivo general</h3>
+<p>Demostrar, con cálculos reproducibles y criterio ingenieril, la viabilidad de una red GSM/EDGE táctica en un escenario de alta movilidad y en un entorno de alta densidad operativa.</p>
+<h3>1.2 Objetivos específicos</h3>
+<ul>
+<li>Cuantificar el efecto Doppler y el tiempo de coherencia para velocidades tácticas representativas.</li>
+<li>Determinar si el canal puede considerarse aproximadamente estable durante un timeslot GSM.</li>
+<li>Diseñar una planificación básica de frecuencias con 24 ARFCNs y clúster N=4.</li>
+<li>Justificar el papel de BCCH, TCH y la política de potencia/hopping en el reparto de canales.</li>
+<li>Analizar cómo cambia el suelo de ruido instrumental al modificar la RBW del analizador.</li>
+<li>Integrar movilidad, reutilización y certificación RED en una propuesta coherente de despliegue.</li>
+</ul>
+<h2>2. Estado del arte</h2>
+<h3>2.1 Acceso múltiple en GSM/EDGE</h3>
+<p>GSM organiza el acceso radio mediante FDMA y TDMA. En frecuencia, el espectro se divide en portadoras de 200 kHz; en tiempo, cada portadora se reparte en 8 timeslots por trama, con un timeslot base de 577 µs [1], [2].</p>
+<h3>2.2 Canales físicos y canales lógicos</h3>
+<p>Un canal físico es la combinación portadora-timeslot. Sobre él se multiplexan canales lógicos con finalidades distintas: BCCH para difusión y camping, TCH para tráfico y otros canales de control para señalización, acceso y sincronización. En consecuencia, la capacidad útil de usuario nunca debe interpretarse como una mera cuenta bruta de timeslots.</p>
+<h3>2.3 Fading, multitrayecto y movilidad</h3>
+<p>El fading por multitrayecto aparece cuando varias réplicas temporales de la señal interfieren constructiva o destructivamente. Un entorno sin línea de vista dominante suele aproximarse por Rayleigh, mientras que la presencia de una componente fuerte LOS conduce a un comportamiento Rician [3], [4].
+Cuando el ancho de banda de la señal es pequeño frente al ancho de banda de coherencia, el canal puede modelarse como fading plano; si no, aparecen efectos selectivos en frecuencia. En este reto se usa una simulación docente de fading plano para estudiar la estabilidad intra-ráfaga.</p>
+<h3>2.4 Certificación radioeléctrica y Directiva RED</h3>
+<p>El despliegue radio no se limita a la capacidad de servicio: también exige control de emisiones no deseadas, uso eficiente del espectro y trazabilidad de medidas. La Directiva RED aporta el marco regulatorio de conformidad, mientras que el analizador de espectro y el ajuste de RBW permiten distinguir señales débiles de ruido instrumental [5].</p>
+<h2>3. Metodología</h2>
+<h3>3.1 Hipótesis de partida</h3>
+<ul>
+<li>Banda de operación: GSM-900 con frecuencia central aproximada de 900 MHz.</li>
+<li>Acceso radio: portadoras de 200 kHz y 8 timeslots por trama.</li>
+<li>Timeslot analizado: 577 µs.</li>
+<li>Velocidad de propagación: <code>3 × 10^8 m/s</code>.</li>
+<li>Figura de ruido del analizador: 6 dB.</li>
+</ul>
+<h3>3.2 Ecuaciones empleadas</h3>
+<ul>
+<li>Conversión de velocidad: <code>v(m/s) = v(km/h) / 3.6</code>.</li>
+<li>Doppler máximo: <code>f_d = v · f_c / c</code>.</li>
+<li>Tiempo de coherencia: <code>T_c ≈ 0.423 / f_d</code>.</li>
+<li>Reutilización celular: <code>D/R = √(3N)</code> y <code>D = R · √(3N)</code>.</li>
+<li>Suelo de ruido instrumental: <code>N(dBm) = -174 + 10 log10(RBW) + NF</code>.</li>
+</ul>
+<h3>3.3 Flujo reproducible</h3>
+<ol>
+<li>Convertir velocidades de km/h a m/s y calcular Doppler máximo.</li>
+<li>Obtener el tiempo de coherencia y compararlo con el timeslot GSM.</li>
+<li>Simular fading plano Rayleigh y Rician para visualizar variación de envolvente.</li>
+<li>Repartir 24 portadoras entre las celdas del clúster y calcular la distancia de reutilización.</li>
+<li>Evaluar el impacto de la RBW del analizador sobre el ruido integrado.</li>
+<li>Integrar resultados en una discusión común orientada a decisiones de despliegue.</li>
+</ol>
+<h2>4. Escenarios de estudio</h2>
+<h3>4.1 Escenario A — Convoy de alta velocidad</h3>
+<p>Se estudia un despliegue lineal en un valle operativo con radio de celda 3 km y velocidades 50 km/h, 250 km/h. Aquí domina la movilidad extrema: el problema principal no es la cantidad de portadoras disponibles, sino la rapidez con la que cambia el canal radio dentro de una ráfaga GSM.</p>
+<h3>4.2 Escenario B — Campamento base y certificación</h3>
+<p>Se analiza un campamento base con radio de celda 1.5 km, 24 portadoras disponibles y clúster N=4. En este contexto dominan la planificación espectral, la interferencia co-canal y la verificación instrumental de emisiones.</p>
+<p>Mini conclusión parcial: los dos escenarios son complementarios. El primero exige analizar estabilidad temporal del canal; el segundo exige disciplina de espectro y criterio de certificación.</p>
+<h2>5. Pruebas, cálculos y simulaciones</h2>
+<h3>5.1 Prueba 1 — Movilidad y fading</h3>
+<h4>Caso 50 km/h</h4>
+<ol>
+<li>Conversión de velocidad: <code>v = 50 / 3.6 = 13.8889 m/s</code>.</li>
+<li>Desviación Doppler máxima: <code>f_d = v · f_c / c = 13.8889 · 900e6 / 3e8 = 41.6667 Hz</code>.</li>
+<li>Tiempo de coherencia: <code>T_c ≈ 0.423 / f_d = 0.423 / 41.6667 = 0.010152 s = 10.152 ms</code>.</li>
+<li>Comparación con el timeslot GSM: <code>T_c / T_slot = 10.152 / 0.577 = 17.5945</code>.
+Interpretación: el canal se clasifica como <strong>cuasiestatico</strong>. Por tanto, la ráfaga puede considerarse cuasiestática o estable dentro del timeslot, pero la robustez del enlace sigue dependiendo de codificación, entrelazado y margen de diseño.</li>
+</ol>
+<p>Mini conclusión parcial: la movilidad extrema incrementa el Doppler y reduce el tiempo de coherencia; sin embargo, con los parámetros base el canal sigue siendo manejable dentro de una ráfaga GSM.</p>
+<h4>Caso 250 km/h</h4>
+<ol>
+<li>Conversión de velocidad: <code>v = 250 / 3.6 = 69.4444 m/s</code>.</li>
+<li>Desviación Doppler máxima: <code>f_d = v · f_c / c = 69.4444 · 900e6 / 3e8 = 208.3333 Hz</code>.</li>
+<li>Tiempo de coherencia: <code>T_c ≈ 0.423 / f_d = 0.423 / 208.3333 = 0.00203 s = 2.0304 ms</code>.</li>
+<li>Comparación con el timeslot GSM: <code>T_c / T_slot = 2.0304 / 0.577 = 3.5189</code>.
+Interpretación: el canal se clasifica como <strong>estable_con_margen_reducido</strong>. Por tanto, la ráfaga puede considerarse cuasiestática o estable dentro del timeslot, pero la robustez del enlace sigue dependiendo de codificación, entrelazado y margen de diseño.</li>
+</ol>
+<p>Mini conclusión parcial: la movilidad extrema incrementa el Doppler y reduce el tiempo de coherencia; sin embargo, con los parámetros base el canal sigue siendo manejable dentro de una ráfaga GSM.</p>
+<p>Las métricas de fading exportadas permiten comparar la dispersión relativa de la envolvente en escenarios Rayleigh y Rician. En general, el caso Rician presenta menor variación pico a pico por la presencia de una componente dominante.</p>
+<h3>5.2 Prueba 2 — Planificación de frecuencias</h3>
+<ol>
+<li>Reparto espectral: <code>24 / 4 = 6</code> portadoras por celda.</li>
+<li>Relación de reutilización: <code>D/R = √(3N) = √(3 · 4) = 3.4641</code>.</li>
+<li>Distancia de protección: <code>D = R · √(3N) = 1.5 · 3.4641 = 5.1962 km</code>.</li>
+<li>Interpretación: la distancia de reutilización actúa como separación geométrica mínima entre celdas co-canal; cuanto mayor es, mayor protección frente a interferencia, pero menor densidad espectral efectiva.</li>
+<li>Política BCCH/TCH: BCCH se mantiene estable y a potencia fija para asegurar camping, sincronización y acceso; en cambio, TCH puede beneficiarse de hopping y control de potencia cuando la infraestructura lo soporte.</li>
+</ol>
+<p>Mini conclusión parcial: el clúster N=4 introduce un compromiso razonable entre capacidad y protección co-canal para un despliegue táctico con disciplina espectral.</p>
+<h3>5.3 Prueba 3 — Certificación y suelo de ruido</h3>
+<ul>
+<li>RBW = 100 kHz: <code>N = -174 + 10 log10(100000) + 6 = -118 dBm</code>.</li>
+<li>RBW = 10 kHz: <code>N = -174 + 10 log10(10000) + 6 = -128 dBm</code>.</li>
+<li>RBW = 1 kHz: <code>N = -174 + 10 log10(1000) + 6 = -138 dBm</code>.</li>
+</ul>
+<p>Interpretación: al reducir la RBW disminuye el ruido integrado por el analizador, lo que mejora la visibilidad de señales débiles. Sin embargo, esa mejora no implica que la señal real aumente: simplemente mejora la relación visual señal-ruido en la medida.
+Compromiso experimental: una RBW muy estrecha reduce el ruido mostrado, pero incrementa el tiempo de barrido y puede ralentizar la validación de conformidad.</p>
+<p>Mini conclusión parcial: el analizador debe ajustarse con criterio. Una RBW demasiado ancha oculta señales débiles en el ruido; una demasiado estrecha penaliza el tiempo de medida.</p>
+<h3>5.4 Interpretación integrada</h3>
+<p>Los resultados no deben leerse como tres bloques independientes. El escenario A demuestra que la estabilidad intra-ráfaga puede mantenerse incluso con movilidad elevada, lo que avala el uso de GSM/EDGE cuando se prioriza robustez y simplicidad. El escenario B muestra que esa robustez solo es útil si la planificación de frecuencias, el reparto BCCH/TCH y el criterio instrumental preservan el servicio frente a interferencia y falsas interpretaciones de laboratorio.</p>
+<h2>6. Resultados</h2>
+<h3>6.1 Tabla comparativa de movilidad</h3>
+<table>
+<thead>
+<tr>
+<th>scenario</th>
+<th>cell_radius_km</th>
+<th>speed_kmh</th>
+<th>speed_ms</th>
+<th>carrier_frequency_mhz</th>
+<th>max_doppler_hz</th>
+<th>coherence_time_ms</th>
+<th>gsm_timeslot_ms</th>
+<th>coherence_to_timeslot_ratio</th>
+<th>stability_class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A_convoy_alta_velocidad</td>
+<td>3</td>
+<td>50</td>
+<td>13.8889</td>
+<td>900</td>
+<td>41.6667</td>
+<td>10.152</td>
+<td>0.577</td>
+<td>17.5945</td>
+<td>cuasiestatico</td>
+</tr>
+<tr>
+<td>A_convoy_alta_velocidad</td>
+<td>3</td>
+<td>250</td>
+<td>69.4444</td>
+<td>900</td>
+<td>208.333</td>
+<td>2.0304</td>
+<td>0.577</td>
+<td>3.51889</td>
+<td>estable_con_margen_reducido</td>
+</tr>
+</tbody>
+</table>
+<h3>6.2 Métricas de fading</h3>
+<table>
+<thead>
+<tr>
+<th>model</th>
+<th>doppler_hz</th>
+<th>envelope_min</th>
+<th>envelope_max</th>
+<th>envelope_std</th>
+<th>relative_peak_to_peak</th>
+<th>speed_kmh</th>
+<th>coherence_time_ms</th>
+<th>stability_class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>rayleigh</td>
+<td>41.6667</td>
+<td>0.00894961</td>
+<td>3.32166</td>
+<td>0.586993</td>
+<td>3.31271</td>
+<td>50</td>
+<td>10.152</td>
+<td>cuasiestatico</td>
+</tr>
+<tr>
+<td>rician</td>
+<td>41.6667</td>
+<td>0.734056</td>
+<td>1.25486</td>
+<td>0.100871</td>
+<td>0.5208</td>
+<td>50</td>
+<td>10.152</td>
+<td>cuasiestatico</td>
+</tr>
+<tr>
+<td>rayleigh</td>
+<td>208.333</td>
+<td>0.145474</td>
+<td>3.0415</td>
+<td>0.453328</td>
+<td>2.89602</td>
+<td>250</td>
+<td>2.0304</td>
+<td>estable_con_margen_reducido</td>
+</tr>
+<tr>
+<td>rician</td>
+<td>208.333</td>
+<td>0.694197</td>
+<td>1.2311</td>
+<td>0.105082</td>
+<td>0.536901</td>
+<td>250</td>
+<td>2.0304</td>
+<td>estable_con_margen_reducido</td>
+</tr>
+</tbody>
+</table>
+<h3>6.3 Planificación de frecuencias</h3>
+<table>
+<thead>
+<tr>
+<th>scenario</th>
+<th>cell</th>
+<th>cell_radius_km</th>
+<th>cluster_size_N</th>
+<th>total_carriers</th>
+<th>carriers_per_cell</th>
+<th>arfcn_range</th>
+<th>arfcn_list</th>
+<th>reuse_ratio_D_over_R</th>
+<th>reuse_distance_km</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B_campamento_base</td>
+<td>A</td>
+<td>1.5</td>
+<td>4</td>
+<td>24</td>
+<td>6</td>
+<td>1-6</td>
+<td>1, 2, 3, 4, 5, 6</td>
+<td>3.4641</td>
+<td>5.19615</td>
+</tr>
+<tr>
+<td>B_campamento_base</td>
+<td>B</td>
+<td>1.5</td>
+<td>4</td>
+<td>24</td>
+<td>6</td>
+<td>7-12</td>
+<td>7, 8, 9, 10, 11, 12</td>
+<td>3.4641</td>
+<td>5.19615</td>
+</tr>
+<tr>
+<td>B_campamento_base</td>
+<td>C</td>
+<td>1.5</td>
+<td>4</td>
+<td>24</td>
+<td>6</td>
+<td>13-18</td>
+<td>13, 14, 15, 16, 17, 18</td>
+<td>3.4641</td>
+<td>5.19615</td>
+</tr>
+<tr>
+<td>B_campamento_base</td>
+<td>D</td>
+<td>1.5</td>
+<td>4</td>
+<td>24</td>
+<td>6</td>
+<td>19-24</td>
+<td>19, 20, 21, 22, 23, 24</td>
+<td>3.4641</td>
+<td>5.19615</td>
+</tr>
+</tbody>
+</table>
+<h3>6.4 Canales lógicos y físicos</h3>
+<table>
+<thead>
+<tr>
+<th>cell</th>
+<th>arfcn</th>
+<th>carrier_role</th>
+<th>frequency_hopping_recommended</th>
+<th>power_policy</th>
+<th>available_timeslots</th>
+<th>engineering_note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>1</td>
+<td>BCCH/CCCH control</td>
+<td>False</td>
+<td>fixed/stable</td>
+<td>8</td>
+<td>BCCH debe ser detectable y estable para camping, sincronización y control.</td>
+</tr>
+<tr>
+<td>A</td>
+<td>2</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>A</td>
+<td>3</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>A</td>
+<td>4</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>A</td>
+<td>5</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>A</td>
+<td>6</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>B</td>
+<td>7</td>
+<td>BCCH/CCCH control</td>
+<td>False</td>
+<td>fixed/stable</td>
+<td>8</td>
+<td>BCCH debe ser detectable y estable para camping, sincronización y control.</td>
+</tr>
+<tr>
+<td>B</td>
+<td>8</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>B</td>
+<td>9</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>B</td>
+<td>10</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>B</td>
+<td>11</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>B</td>
+<td>12</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>C</td>
+<td>13</td>
+<td>BCCH/CCCH control</td>
+<td>False</td>
+<td>fixed/stable</td>
+<td>8</td>
+<td>BCCH debe ser detectable y estable para camping, sincronización y control.</td>
+</tr>
+<tr>
+<td>C</td>
+<td>14</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>C</td>
+<td>15</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>C</td>
+<td>16</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>C</td>
+<td>17</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>C</td>
+<td>18</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>D</td>
+<td>19</td>
+<td>BCCH/CCCH control</td>
+<td>False</td>
+<td>fixed/stable</td>
+<td>8</td>
+<td>BCCH debe ser detectable y estable para camping, sincronización y control.</td>
+</tr>
+<tr>
+<td>D</td>
+<td>20</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>D</td>
+<td>21</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>D</td>
+<td>22</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>D</td>
+<td>23</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+<tr>
+<td>D</td>
+<td>24</td>
+<td>TCH traffic</td>
+<td>True</td>
+<td>adaptive if supported</td>
+<td>8</td>
+<td>TCH transporta tráfico; puede beneficiarse de hopping y control de potencia.</td>
+</tr>
+</tbody>
+</table>
+<h3>6.5 Instrumentación y RBW</h3>
+<table>
+<thead>
+<tr>
+<th>rbw_hz</th>
+<th>rbw_khz</th>
+<th>noise_figure_db</th>
+<th>noise_floor_dbm</th>
+<th>delta_vs_100khz_db</th>
+<th>measurement_interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100000</td>
+<td>100</td>
+<td>6</td>
+<td>-118</td>
+<td>0</td>
+<td>RBW ancho: medida rápida, más ruido integrado.</td>
+</tr>
+<tr>
+<td>10000</td>
+<td>10</td>
+<td>6</td>
+<td>-128</td>
+<td>-10</td>
+<td>RBW estrecho: menor ruido integrado, barrido más lento.</td>
+</tr>
+<tr>
+<td>1000</td>
+<td>1</td>
+<td>6</td>
+<td>-138</td>
+<td>-20</td>
+<td>RBW estrecho: menor ruido integrado, barrido más lento.</td>
+</tr>
+</tbody>
+</table>
+<h3>6.6 Checklist RED orientativo</h3>
+<table>
+<thead>
+<tr>
+<th>area</th>
+<th>evidence</th>
+<th>student_task</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Uso eficiente del espectro</td>
+<td>planificación ARFCN, clúster N=4, distancia de reutilización y control de co-canal</td>
+<td>Justificar que la asignación espectral reduce interferencias y evita solapamientos.</td>
+</tr>
+<tr>
+<td>Emisiones no deseadas</td>
+<td>medida con analizador de espectro y ajuste de RBW</td>
+<td>Explicar cómo se distinguirían señales débiles de ruido instrumental.</td>
+</tr>
+<tr>
+<td>Estabilidad de canal</td>
+<td>Doppler, tiempo de coherencia y comparación con timeslot GSM</td>
+<td>Defender si el enlace es viable durante la ráfaga en movilidad.</td>
+</tr>
+<tr>
+<td>Documentación técnica</td>
+<td>tablas, gráficas, hipótesis y trazabilidad de cálculos</td>
+<td>Incluir ecuaciones, unidades y discusión ingenieril.</td>
+</tr>
+</tbody>
+</table>
+<h3>6.7 Figuras recomendadas para el informe</h3>
+<p><img alt="Figura 1. Doppler máximo frente a velocidad" src="figures/escenario_a_doppler.png" /></p>
+<p><img alt="Figura 2. Coherencia frente al timeslot GSM" src="figures/escenario_a_coherencia_vs_timeslot.png" /></p>
+<p><img alt="Figura 3. Reutilización celular en el campamento base" src="figures/escenario_b_reutilizacion.png" /></p>
+<p><img alt="Figura 4. Mapa de clúster y patrón de reutilización" src="figures/escenario_b_cluster_map.png" /></p>
+<p><img alt="Figura 5. Distribución de portadoras por celda" src="figures/escenario_b_distribucion_portadoras.png" /></p>
+<p><img alt="Figura 6. Huella espectral aproximada del despliegue" src="figures/escenario_b_spectrum.png" /></p>
+<p><img alt="Figura 7. Ruido instrumental frente a RBW" src="figures/certificacion_rbw_ruido.png" /></p>
+<h2>7. Discusión y conclusiones</h2>
+<h3>7.1 Discusión</h3>
+<p>En el escenario A, el peor caso temporal sigue siendo <strong>estable_con_margen_reducido</strong>, mientras que el mejor caso alcanza <strong>cuasiestatico</strong>. Esto sugiere que la red puede operar con márgenes razonables en movilidad, siempre que el diseño conserve codificación robusta, control de potencia y suficiente sensibilidad radio.
+En el escenario B, el reparto de 6 portadoras por celda y la distancia de protección de 5.1962 km ofrecen una configuración coherente con un despliegue disciplinado. La existencia de 4 portadoras BCCH dedicadas refuerza la accesibilidad de la red a costa de reducir ligeramente el tráfico bruto disponible.
+Desde el punto de vista de certificación, la interpretación correcta de la RBW evita errores frecuentes: reducir ruido mostrado no significa aumentar potencia real. Ese matiz es crucial para no sobreestimar el comportamiento de emisiones espurias o señales débiles.</p>
+<h3>7.2 Conclusiones</h3>
+<ol>
+<li>GSM/EDGE sigue siendo una referencia válida para entornos tácticos donde priman robustez, interoperabilidad y sencillez operativa.</li>
+<li>La movilidad analizada no invalida el enlace intra-ráfaga; el impacto de Doppler es apreciable pero gestionable con diseño conservador.</li>
+<li>El clúster N=4 proporciona un equilibrio razonable entre capacidad y protección co-canal en el campamento base.</li>
+<li>BCCH debe mantenerse estable y fácilmente detectable; TCH puede optimizarse con mayor flexibilidad operativa.</li>
+<li>La configuración del analizador de espectro forma parte del diseño ingenieril porque condiciona la lectura correcta de conformidad y emisiones no deseadas.</li>
+</ol>
+<h2>8. Limitaciones y trabajo futuro</h2>
+<ul>
+<li>El modelo de fading empleado es docente y no sustituye a una simulación completa tipo Jakes o a medidas de campo.</li>
+<li>La asignación de ARFCNs es consecutiva y no incorpora coordinación real basada en campañas de medida.</li>
+<li>La capacidad de tráfico se resume de forma pedagógica y no modela todos los canales lógicos de control de una red comercial completa.</li>
+<li>Como trabajo futuro, puede ampliarse el proyecto con balance de enlace, C/I estimada y comparación con tecnologías más modernas de misión crítica.</li>
+</ul>
+<h2>9. Referencias</h2>
+<p>[1] 3GPP TS 45.002, <em>Multiplexing and multiple access on the radio path</em>.
+[2] 3GPP TS 45.001, <em>Physical layer on the radio path; General description</em>.
+[3] T. S. Rappaport, <em>Wireless Communications: Principles and Practice</em>, 2nd ed. Prentice Hall, 2002.
+[4] B. Sklar, <em>Digital Communications: Fundamentals and Applications</em>, 2nd ed. Prentice Hall, 2001.
+[5] Directive 2014/53/EU of the European Parliament and of the Council of 16 April 2014 on radio equipment (RED).</p>
+  </main>
+</body>
+</html>

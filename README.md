@@ -40,8 +40,14 @@ python -m protocolo_titan.main
 La ejecución completa genera:
 
 - `outputs/informe_resultados.md`: informe técnico largo con estructura IMRyD ampliada y discusión alineada con la rúbrica.
+- `outputs/informe_resultados.html` y `outputs/informe_resultados.pdf`: exportaciones automáticas listas para revisión o entrega.
+- `outputs/informe_resultados.docx`: versión editable para retoques finales en Word o LibreOffice.
 - `outputs/anexo_calculos.md`: anexo de cálculos paso a paso y trazabilidad.
+- `outputs/anexo_calculos.html` y `outputs/anexo_calculos.pdf`: versiones exportadas del anexo.
+- `outputs/anexo_calculos.docx`: anexo editable para revisión docente.
 - `outputs/guion_defensa.md`: guion breve para una defensa oral.
+- `outputs/guion_defensa.html` y `outputs/guion_defensa.pdf`: versiones listas para compartir o imprimir.
+- `outputs/guion_defensa.docx`: versión editable para adaptar la defensa.
 - tablas CSV y figuras PNG listas para integrarse en el entregable final.
 
 Si ejecutas desde la raíz del repositorio y Python no encuentra el paquete:
@@ -195,6 +201,9 @@ N(dBm) = -174 dBm/Hz + 10 log10(RBW) + NF
 ## 9. Cobertura de la rúbrica
 
 - **Formato y estructura**: `outputs/informe_resultados.md` ya sigue una estructura IMRyD ampliada con introducción, estado del arte, metodología, escenarios, resultados, discusión y referencias.
+- **Exportación final**: `main.py` deja preparados `Markdown`, `HTML` y `PDF` sin depender de herramientas externas.
+- **Edición final**: también deja `DOCX` para hacer ajustes de estilo, portada o referencias desde Word.
+- **Portada**: el `DOCX` principal ya incorpora una portada académica editable con campos de entrega para completar.
 - **Rigor teórico**: el informe incluye FDMA/TDMA, canales físicos/lógicos, fading, Doppler, reutilización y RED.
 - **Precisión matemática**: `outputs/anexo_calculos.md` deja trazables las conversiones, fórmulas y unidades.
 - **Análisis de resultados**: la discusión integra movilidad, interferencia y medida instrumental en una única propuesta de red.

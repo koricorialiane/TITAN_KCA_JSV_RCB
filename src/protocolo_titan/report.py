@@ -1,5 +1,18 @@
+import re
+from datetime import date
+from html import escape as html_escape
 from pathlib import Path
+
+import markdown
 import pandas as pd
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Cm, Pt
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import Image, ListFlowable, ListItem, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
 def _format_number(value: float, digits: int = 4) -> str:
@@ -496,6 +509,485 @@ def build_defense_brief_markdown(
             "- La propuesta es defendible para misión crítica si se mantiene diseño conservador, planificación ordenada y validación instrumental rigurosa.",
         ]
     ) + "\n"
+
+
+def _markdown_to_html_fragment(markdown_text: str) -> str:
+    return markdown.markdown(markdown_text, extensions=["tables", "sane_lists"])
+
+
+def build_html_document(document_title: str, markdown_text: str) -> str:
+    body = _markdown_to_html_fragment(markdown_text)
+    title = html_escape(document_title)
+    return f"""<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <style>
+    :root {{ color-scheme: light; }}
+    body {{
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #1f2937;
+      line-height: 1.55;
+    }}
+    main {{
+      max-width: 1080px;
+      margin: 32px auto;
+      background: #ffffff;
+      padding: 36px 42px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      border-radius: 14px;
+    }}
+    h1, h2, h3, h4 {{ color: #0f172a; margin-top: 1.35em; }}
+    h1 {{ font-size: 2rem; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.35rem; }}
+    h2 {{ font-size: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem; }}
+    h3 {{ font-size: 1.2rem; }}
+    h4 {{ font-size: 1.05rem; }}
+    p, li {{ font-size: 0.98rem; }}
+    code {{ background: #eef2ff; padding: 0.1rem 0.3rem; border-radius: 4px; font-family: Consolas, monospace; }}
+    pre {{ background: #0f172a; color: #f8fafc; padding: 1rem; overflow-x: auto; border-radius: 8px; }}
+    table {{ width: 100%; border-collapse: collapse; margin: 1rem 0 1.4rem 0; font-size: 0.92rem; }}
+    th, td {{ border: 1px solid #cbd5e1; padding: 0.55rem 0.6rem; text-align: left; vertical-align: top; }}
+    th {{ background: #e2e8f0; }}
+    img {{ max-width: 100%; height: auto; display: block; margin: 1rem auto; border: 1px solid #cbd5e1; border-radius: 8px; }}
+    blockquote {{ margin: 1rem 0; padding-left: 1rem; border-left: 4px solid #94a3b8; color: #475569; }}
+    @media print {{
+      body {{ background: #ffffff; }}
+      main {{ box-shadow: none; margin: 0; max-width: none; padding: 0; }}
+      a {{ color: inherit; text-decoration: none; }}
+    }}
+  </style>
+</head>
+<body>
+  <main>
+{body}
+  </main>
+</body>
+</html>
+"""
+
+
+def _inline_markdown_to_reportlab(text: str) -> str:
+    escaped = html_escape(text, quote=True)
+    escaped = re.sub(r"`([^`]+)`", lambda match: f'<font name="Courier">{match.group(1)}</font>', escaped)
+    escaped = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", escaped)
+    escaped = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<i>\1</i>", escaped)
+    return escaped
+
+
+def _strip_inline_markdown(text: str) -> str:
+    return re.sub(r"(`|\*\*)", "", text).replace("*", "")
+
+
+def _add_inline_runs(paragraph, text: str) -> None:
+    token_pattern = re.compile(r"(\*\*[^*]+\*\*|`[^`]+`|(?<!\*)\*[^*]+\*(?!\*))")
+    last_idx = 0
+
+    for match in token_pattern.finditer(text):
+        if match.start() > last_idx:
+            paragraph.add_run(text[last_idx:match.start()])
+
+        token = match.group(0)
+        if token.startswith("**") and token.endswith("**"):
+            run = paragraph.add_run(token[2:-2])
+            run.bold = True
+        elif token.startswith("`") and token.endswith("`"):
+            run = paragraph.add_run(token[1:-1])
+            run.font.name = "Courier New"
+        elif token.startswith("*") and token.endswith("*"):
+            run = paragraph.add_run(token[1:-1])
+            run.italic = True
+
+        last_idx = match.end()
+
+    if last_idx < len(text):
+        paragraph.add_run(text[last_idx:])
+
+
+def _add_docx_cover_page(document: Document, report_title: str, document_title: str) -> None:
+    today = date.today().strftime("%d/%m/%Y")
+
+    header = document.add_paragraph()
+    header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = header.add_run("PLANTILLA DE ENTREGA ACADÉMICA")
+    run.bold = True
+    run.font.name = "Arial"
+    run.font.size = Pt(13)
+
+    document.add_paragraph()
+    document.add_paragraph()
+
+    title_paragraph = document.add_paragraph()
+    title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title_paragraph.add_run(report_title)
+    title_run.bold = True
+    title_run.font.name = "Arial"
+    title_run.font.size = Pt(22)
+
+    subtitle_paragraph = document.add_paragraph()
+    subtitle_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    subtitle_run = subtitle_paragraph.add_run(document_title)
+    subtitle_run.italic = True
+    subtitle_run.font.name = "Arial"
+    subtitle_run.font.size = Pt(11)
+
+    summary_paragraph = document.add_paragraph()
+    summary_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    summary_run = summary_paragraph.add_run(
+        "Análisis técnico de una red GSM/EDGE táctica para movilidad extrema, planificación espectral y certificación instrumental."
+    )
+    summary_run.font.name = "Arial"
+    summary_run.font.size = Pt(10)
+
+    document.add_paragraph()
+    document.add_paragraph()
+
+    meta_table = document.add_table(rows=7, cols=2)
+    meta_table.style = "Table Grid"
+    metadata_rows = [
+        ("Centro / Universidad", "[Completar]"),
+        ("Asignatura / Módulo", "[Completar]"),
+        ("Titulación / Grupo", "[Completar]"),
+        ("Autor / Equipo", "[Completar]"),
+        ("Docente", "[Completar]"),
+        ("Fecha de entrega", today),
+        ("Versión del documento", "v1.0"),
+    ]
+    for row_idx, (label, value) in enumerate(metadata_rows):
+        label_cell = meta_table.cell(row_idx, 0).paragraphs[0]
+        value_cell = meta_table.cell(row_idx, 1).paragraphs[0]
+        label_run = label_cell.add_run(label)
+        label_run.bold = True
+        label_run.font.name = "Arial"
+        value_run = value_cell.add_run(value)
+        value_run.font.name = "Arial"
+
+    document.add_paragraph()
+
+    body_title = document.add_paragraph()
+    body_title.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    body_title_run = body_title.add_run("Datos de entrega y revisión final")
+    body_title_run.bold = True
+    body_title_run.font.name = "Arial"
+    body_title_run.font.size = Pt(11)
+
+    checklist_items = [
+        "Revisar portada, índice, numeración y formato de referencias antes de exportar la versión final.",
+        "Verificar que las figuras insertadas mantengan legibilidad en PDF y en impresión.",
+        "Sustituir los campos [Completar] por los datos reales del grupo o del estudiante.",
+    ]
+    for item in checklist_items:
+        paragraph = document.add_paragraph(style="List Bullet")
+        run = paragraph.add_run(item)
+        run.font.name = "Arial"
+
+    document.add_page_break()
+
+
+def _is_table_separator(line: str) -> bool:
+    stripped = line.strip().strip("|")
+    if not stripped:
+        return False
+    return all(set(cell.strip()) <= {"-", ":"} and cell.strip() for cell in stripped.split("|"))
+
+
+def _parse_table_row(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _markdown_to_pdf_story(markdown_text: str, asset_root: Path) -> list:
+    stylesheet = getSampleStyleSheet()
+    styles = {
+        "title": stylesheet["Title"],
+        "h1": stylesheet["Heading1"],
+        "h2": stylesheet["Heading2"],
+        "h3": stylesheet["Heading3"],
+        "h4": ParagraphStyle("Heading4Custom", parent=stylesheet["Heading3"], fontSize=11, leading=14, spaceAfter=6),
+        "body": ParagraphStyle("BodyCustom", parent=stylesheet["BodyText"], fontSize=9.5, leading=13, spaceAfter=6),
+        "caption": ParagraphStyle("CaptionCustom", parent=stylesheet["BodyText"], fontSize=8.5, leading=11, alignment=1, textColor=colors.HexColor("#334155")),
+    }
+
+    lines = markdown_text.splitlines()
+    story: list = []
+    idx = 0
+
+    while idx < len(lines):
+        line = lines[idx].rstrip()
+
+        if not line.strip():
+            idx += 1
+            continue
+
+        if line.startswith("# "):
+            story.append(Paragraph(_inline_markdown_to_reportlab(line[2:].strip()), styles["title"]))
+            story.append(Spacer(1, 0.2 * cm))
+            idx += 1
+            continue
+
+        if line.startswith("## "):
+            story.append(Paragraph(_inline_markdown_to_reportlab(line[3:].strip()), styles["h1"]))
+            idx += 1
+            continue
+
+        if line.startswith("### "):
+            story.append(Paragraph(_inline_markdown_to_reportlab(line[4:].strip()), styles["h2"]))
+            idx += 1
+            continue
+
+        if line.startswith("#### "):
+            story.append(Paragraph(_inline_markdown_to_reportlab(line[5:].strip()), styles["h4"]))
+            idx += 1
+            continue
+
+        if line.startswith("!["):
+            match = re.match(r"!\[(.*?)\]\((.*?)\)", line)
+            if match:
+                caption, relative_path = match.groups()
+                image_path = asset_root / relative_path
+                if image_path.exists():
+                    image = Image(str(image_path))
+                    image._restrictSize(25 * cm, 14 * cm)
+                    story.append(image)
+                    if caption:
+                        story.append(Paragraph(_inline_markdown_to_reportlab(caption), styles["caption"]))
+                    story.append(Spacer(1, 0.2 * cm))
+            idx += 1
+            continue
+
+        if line.startswith("|"):
+            table_lines = [line]
+            idx += 1
+            while idx < len(lines) and lines[idx].strip().startswith("|"):
+                table_lines.append(lines[idx].rstrip())
+                idx += 1
+
+            parsed_rows = [_parse_table_row(table_line) for table_line in table_lines if not _is_table_separator(table_line)]
+            if parsed_rows:
+                col_count = max(len(row) for row in parsed_rows)
+                normalized_rows = [
+                    row + [""] * (col_count - len(row)) for row in parsed_rows
+                ]
+                table_data = [
+                    [Paragraph(_inline_markdown_to_reportlab(cell), styles["body"]) for cell in row]
+                    for row in normalized_rows
+                ]
+                col_width = 27.0 * cm / col_count
+                table = Table(table_data, repeatRows=1, colWidths=[col_width] * col_count)
+                table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#dbeafe")),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#94a3b8")),
+                            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                            ("TOPPADDING", (0, 0), (-1, -1), 3),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                        ]
+                    )
+                )
+                story.append(table)
+                story.append(Spacer(1, 0.25 * cm))
+            continue
+
+        if line.startswith("- "):
+            list_lines = []
+            while idx < len(lines) and lines[idx].startswith("- "):
+                list_lines.append(lines[idx][2:].strip())
+                idx += 1
+            story.append(
+                ListFlowable(
+                    [ListItem(Paragraph(_inline_markdown_to_reportlab(item), styles["body"])) for item in list_lines],
+                    bulletType="bullet",
+                    leftIndent=14,
+                )
+            )
+            story.append(Spacer(1, 0.15 * cm))
+            continue
+
+        if re.match(r"^\d+\.\s", line):
+            list_lines = []
+            while idx < len(lines) and re.match(r"^\d+\.\s", lines[idx]):
+                list_lines.append(re.sub(r"^\d+\.\s", "", lines[idx]).strip())
+                idx += 1
+            story.append(
+                ListFlowable(
+                    [ListItem(Paragraph(_inline_markdown_to_reportlab(item), styles["body"])) for item in list_lines],
+                    bulletType="1",
+                    leftIndent=18,
+                )
+            )
+            story.append(Spacer(1, 0.15 * cm))
+            continue
+
+        paragraph_lines = [line]
+        idx += 1
+        while idx < len(lines):
+            next_line = lines[idx].rstrip()
+            if not next_line.strip():
+                break
+            if next_line.startswith(("#", "!", "|", "- ")) or re.match(r"^\d+\.\s", next_line):
+                break
+            paragraph_lines.append(next_line)
+            idx += 1
+
+        paragraph_text = " ".join(part.strip() for part in paragraph_lines)
+        story.append(Paragraph(_inline_markdown_to_reportlab(paragraph_text), styles["body"]))
+
+    return story
+
+
+def _draw_page_number(canvas, doc) -> None:
+    canvas.saveState()
+    canvas.setFont("Helvetica", 8)
+    canvas.drawRightString(doc.pagesize[0] - doc.rightMargin, 0.6 * cm, f"Página {canvas.getPageNumber()}")
+    canvas.restoreState()
+
+
+def write_html_document(output_path: Path, document_title: str, markdown_text: str) -> None:
+    output_path.write_text(build_html_document(document_title, markdown_text), encoding="utf-8")
+
+
+def write_pdf_document(output_path: Path, document_title: str, markdown_text: str, asset_root: Path) -> None:
+    doc = SimpleDocTemplate(
+        str(output_path),
+        title=document_title,
+        pagesize=landscape(A4),
+        leftMargin=1.2 * cm,
+        rightMargin=1.2 * cm,
+        topMargin=1.2 * cm,
+        bottomMargin=1.2 * cm,
+    )
+    story = _markdown_to_pdf_story(markdown_text, asset_root=asset_root)
+    doc.build(story, onFirstPage=_draw_page_number, onLaterPages=_draw_page_number)
+
+
+def write_docx_document(output_path: Path, document_title: str, markdown_text: str, asset_root: Path) -> None:
+    document = Document()
+    section = document.sections[0]
+    section.top_margin = Cm(2.0)
+    section.bottom_margin = Cm(2.0)
+    section.left_margin = Cm(2.2)
+    section.right_margin = Cm(2.2)
+
+    normal_style = document.styles["Normal"]
+    normal_style.font.name = "Arial"
+    normal_style.font.size = Pt(10)
+
+    heading_styles = {
+        1: document.styles["Heading 1"],
+        2: document.styles["Heading 2"],
+        3: document.styles["Heading 3"],
+    }
+    for style in heading_styles.values():
+        style.font.name = "Arial"
+
+    lines = markdown_text.splitlines()
+    idx = 0
+    cover_added = False
+
+    while idx < len(lines):
+        line = lines[idx].rstrip()
+
+        if not line.strip():
+            idx += 1
+            continue
+
+        if line.startswith("# "):
+            if not cover_added:
+                _add_docx_cover_page(document, line[2:].strip(), document_title)
+                cover_added = True
+            idx += 1
+            continue
+
+        if line.startswith("## "):
+            paragraph = document.add_paragraph(style="Heading 1")
+            _add_inline_runs(paragraph, line[3:].strip())
+            idx += 1
+            continue
+
+        if line.startswith("### "):
+            paragraph = document.add_paragraph(style="Heading 2")
+            _add_inline_runs(paragraph, line[4:].strip())
+            idx += 1
+            continue
+
+        if line.startswith("#### "):
+            paragraph = document.add_paragraph(style="Heading 3")
+            _add_inline_runs(paragraph, line[5:].strip())
+            idx += 1
+            continue
+
+        if line.startswith("!["):
+            match = re.match(r"!\[(.*?)\]\((.*?)\)", line)
+            if match:
+                caption, relative_path = match.groups()
+                image_path = asset_root / relative_path
+                if image_path.exists():
+                    document.add_picture(str(image_path), width=Cm(16.5))
+                    caption_paragraph = document.add_paragraph()
+                    caption_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    caption_run = caption_paragraph.add_run(caption)
+                    caption_run.italic = True
+                    caption_run.font.size = Pt(9)
+            idx += 1
+            continue
+
+        if line.startswith("|"):
+            table_lines = [line]
+            idx += 1
+            while idx < len(lines) and lines[idx].strip().startswith("|"):
+                table_lines.append(lines[idx].rstrip())
+                idx += 1
+
+            parsed_rows = [_parse_table_row(table_line) for table_line in table_lines if not _is_table_separator(table_line)]
+            if parsed_rows:
+                col_count = max(len(row) for row in parsed_rows)
+                table = document.add_table(rows=len(parsed_rows), cols=col_count)
+                table.style = "Table Grid"
+                for row_idx, row in enumerate(parsed_rows):
+                    for col_idx in range(col_count):
+                        value = row[col_idx] if col_idx < len(row) else ""
+                        cell_paragraph = table.cell(row_idx, col_idx).paragraphs[0]
+                        _add_inline_runs(cell_paragraph, _strip_inline_markdown(value))
+                        if row_idx == 0:
+                            for run in cell_paragraph.runs:
+                                run.bold = True
+            continue
+
+        if line.startswith("- "):
+            while idx < len(lines) and lines[idx].startswith("- "):
+                paragraph = document.add_paragraph(style="List Bullet")
+                _add_inline_runs(paragraph, lines[idx][2:].strip())
+                idx += 1
+            continue
+
+        if re.match(r"^\d+\.\s", line):
+            while idx < len(lines) and re.match(r"^\d+\.\s", lines[idx]):
+                paragraph = document.add_paragraph(style="List Number")
+                _add_inline_runs(paragraph, re.sub(r"^\d+\.\s", "", lines[idx]).strip())
+                idx += 1
+            continue
+
+        paragraph_lines = [line]
+        idx += 1
+        while idx < len(lines):
+            next_line = lines[idx].rstrip()
+            if not next_line.strip():
+                break
+            if next_line.startswith(("#", "!", "|", "- ")) or re.match(r"^\d+\.\s", next_line):
+                break
+            paragraph_lines.append(next_line)
+            idx += 1
+
+        paragraph = document.add_paragraph()
+        _add_inline_runs(paragraph, " ".join(part.strip() for part in paragraph_lines))
+
+    document.save(str(output_path))
 
 
 def write_markdown_report(
